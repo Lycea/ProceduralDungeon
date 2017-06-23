@@ -1,73 +1,48 @@
 
 DungeonCreator = {}
 
+-- needed for triangulation !
 local Delaunay = require "src.delaunay"
 local Point    = Delaunay.Point
 local Edge     = Delaunay.Edge
---require "imgui"
 
-local steps={}
-local drawing ={}
-local step_idx = 1
-local rooms ={}
 
-local temp_tab = {}
-local triang_done = false
+-- first two are function tables
+local steps     = {}
+local drawing   = {}
 
-local temp_obj ={}
-local world
-local created_obj = false
-local txt =" "
-local data_copied = false
-
-local max_width  = 20
-local max_height = 25
-local mean_thresh = 1.34
-local max_rooms = 150
-
+local rooms     = {}
+local temp_tab  = {}
+local temp_obj  = {}
 local main_rooms = {}
 
-local count = 0
-local old = 0
-local wait = 0
-
-local mst_done = false
-  
-local function refresh()
-  --array resets
-  step_idx = 1
-  rooms ={}
-  temp_obj ={}
-  created_obj = false
-  txt =" "
-  data_copied = false
-  
-  -- user data reset
-  --max_width  = 20
-  --max_height = 25
-  --mean_thresh = 1.25
-  
-  main_rooms = {}
-  
-  count = 0
-  old = 0
-  wait = 2
-end
+local world
+local triangles
 
 
-function refresh_main()
-  main_rooms = {}
-  for i in ipairs(rooms) do
-    if rooms[i].width > max_width*mean_thresh and rooms[i].height> max_height*mean_thresh then
-          rooms[i].isMain = true
-          
-          --rooms[i].CenterX = (rooms[i].x+rooms[i].width+rooms[i].x)/2 
-          --rooms[i].CenterY = (rooms[i].y+rooms[i].height+rooms[i].y)/2 
-          
-          main_rooms[#main_rooms+1] = rooms[i]
-    end
-  end
-end
+
+
+
+
+local options = {
+  step_idx = 1,
+  triang_done = false,
+  created_obj = false,
+  data_copied = false,
+  mst_done    = false,
+  txt =" ",
+  max_width  = 20,
+  max_height = 25,
+  mean_thresh = 1.34,
+  max_rooms = 150,
+  count = 0,
+  old = 0,
+  max = 10000,               --What is this for ?
+  norm_done = false,
+  true_c = 0,
+  wait = 0
+  }
+
 
 
 
@@ -109,8 +84,8 @@ local function notFinished3()
    -- print("nope3")
   end
 local function finished(a,b,coll,n,t)
-    txt=" "
-    count = 0
+    options.txt=" "
+    options.count = 0
 end
     
   
@@ -129,7 +104,7 @@ end
  drawing[2] = function()
    for i in ipairs(temp_obj) do
      love.graphics.setColor(255,255,255,200)
-     x,y =temp_obj[i].body:getPosition()
+     x,y = temp_obj[i].body:getPosition()
      x,y = temp_obj[i].body:getWorldPoint(x,y)
      x,y = roundm(x,10) ,roundm(y,10)
      
@@ -139,19 +114,19 @@ end
      love.graphics.polygon("line",temp_obj[i].body:getWorldPoints(temp_obj[i].shape:getPoints()))
    end
     
-    txt = world:getContactCount()
-    if txt == old then
-      count= count+1
+    options.txt = world:getContactCount()
+    if options.txt == options.old then
+      options.count= options.count+1
     else
-      count = 0
-      old = txt
+      options.count = 0
+      options.old = options.txt
     end
     
-    if count > 50 then
+    if options.count > 50 then
       --txt = "test\n"
-      step_idx = step_idx +1
+      options.step_idx = options.step_idx +1
     end
-    love.graphics.print(txt.." "..count,0,0)
+    love.graphics.print(options.txt.." "..options.count,0,0)
 end
 
   
@@ -174,13 +149,13 @@ end
  
   
 steps[1] = function() 
-    if #rooms > max_rooms then
-      step_idx = step_idx+1
+    if #rooms > options.max_rooms then
+      options.step_idx = options.step_idx+1
       return
     end
     rooms[#rooms+1]       ={}
-    rooms[#rooms].height  =love.math.randomNormal(10,max_height)
-    rooms[#rooms].width   =love.math.randomNormal(10,max_width)
+    rooms[#rooms].height  =love.math.randomNormal(10,options.max_height)
+    rooms[#rooms].width   =love.math.randomNormal(10,options.max_width)
     if  rooms[#rooms].width < 0 then
       rooms[#rooms].width = 0
     end
@@ -197,7 +172,9 @@ steps[1] = function()
 end
 
 steps[2] = function(dt)
-  if created_obj == false then
+  local success
+  
+  if options.created_obj == false then
     -- create all the objects
     world:setCallbacks(notFinished,notFinished2,notFinished3,finished)
     for j in ipairs(rooms) do
@@ -216,7 +193,7 @@ steps[2] = function(dt)
       end
       
     end
-    created_obj = true
+    options.created_obj = true
   else
     --only update till there is no collision anymore
     world:update(dt)
@@ -224,15 +201,16 @@ steps[2] = function(dt)
 end
 
 steps[3] = function(dt)
+  local x,y
   --copy data  and select the main rooms
-  if data_copied == false then
+  if options.data_copied == false then
     for i in ipairs(temp_obj)do
       x,y = temp_obj[i].body:getWorldPoints(temp_obj[i].shape:getPoints())
       print(roundm(x,2).." "..roundm(y,2))
       rooms[i].x = roundm(x,2)
       rooms[i].y = roundm(y,2)
       
-      if rooms[i].width > max_width*mean_thresh and rooms[i].height> max_height*mean_thresh then
+      if rooms[i].width > options.max_width*options.mean_thresh and rooms[i].height> options.max_height*options.mean_thresh then
         rooms[i].isMain = true
         
         rooms[i].CenterX = (rooms[i].x+rooms[i].width+rooms[i].x)/2 
@@ -242,11 +220,11 @@ steps[3] = function(dt)
         end
     end
     world:destroy()
-    data_copied = true
+    options.data_copied = true
   else
-    wait = wait + dt
-    if wait >2 then
-      step_idx = step_idx+1
+    options.wait =options.wait + dt
+    if options.wait >2 then
+      options.step_idx = options.step_idx+1
     end
   end
 
@@ -254,7 +232,7 @@ end
 
 
 steps[4] = function ()
-  if triang_done == false then
+  if options.triang_done == false then
     for i in ipairs( main_rooms) do
       temp_tab[#temp_tab+1]= Point(main_rooms[i].CenterX,main_rooms[i].CenterY)
     end
@@ -262,7 +240,7 @@ steps[4] = function ()
       for i, triangle in ipairs(triangles) do
         print(triangle)
         end
-     triang_done = true
+     options.triang_done = true
   end  
 end
 
@@ -270,13 +248,7 @@ end
 local path_edges  = {}
 local edges_pre   = {}
 local edges_final = {}
-
-
 local id ={}
-local max =10000
-
-local norm_done = false
-local true_c = 0
 local rooms_n = {}
 
 function math.sign(n) return n>0 and 1 or n<0 and -1 or 0 end
@@ -384,8 +356,8 @@ steps[6] = function ()
     
   end
   
-  norm_done = true
-  step_idx = step_idx+1
+  options.norm_done = true
+  options.step_idx = options.step_idx+1
 end
 
 function checkIntersect(l1p1, l1p2, l2p1, l2p2)
@@ -437,7 +409,7 @@ function CheckCollision(room,line)
     
     return false
   else
-    true_c = true_c + 1
+    options.true_c = options.true_c + 1
     rooms_n[#rooms_n+1] =room
      -- love.graphics.clear()
         love.graphics.setColor(0,100,200,255)
@@ -470,7 +442,7 @@ function mst ()
    local count = 0
    
    --init ids
-   for i=1,max do
+   for i=1,options.max do
       id[i]= i
    end
    
@@ -505,7 +477,7 @@ end
 
 steps[5] = function ()
   
-  if mst_done == true  then
+  if options.mst_done == true  then
     return
   end
   
@@ -547,10 +519,10 @@ steps[5] = function ()
            end
    end  
    
-   print("möp")
+   --print("möp")
    
    --start minimum spanning tree algorithmus
-    temp,weight,num = mst()
+    local temp,weight,num = mst()
     
     print(weight.."  "..num)
     
@@ -575,13 +547,13 @@ steps[5] = function ()
     
     
     path_edges = temp
-    mst_done = true
+    options.mst_done = true
     
-    step_idx = step_idx +1
+    options.step_idx = options.step_idx +1
 end
 
 steps[7] = function ()
-  true_c = 0
+  options.true_c = 0
   rooms_n = 0
   rooms_n = {}
     for i, edge in ipairs (edges_final)do
@@ -616,7 +588,7 @@ drawing[4] = function ()
     love.graphics.rectangle("line",rooms[i].x,rooms[i].y,rooms[i].width,rooms[i].height)
    end
    
-   if triang_done == true then
+   if options.triang_done == true then
      love.graphics.setColor(0,255,0,255)
      love.graphics.setLineWidth(3)
          for i, triangle in ipairs(triangles) do
@@ -628,7 +600,7 @@ drawing[4] = function ()
        
       end  
       love.timer.sleep(1)
-       step_idx = step_idx+1
+       options.step_idx = options.step_idx+1
    end
    
 end
@@ -657,10 +629,10 @@ drawing[5] = function ()
     love.graphics.rectangle("line",rooms[i].x,rooms[i].y,rooms[i].width,rooms[i].height)
    end
    
-   if triang_done == true then
+   if options.triang_done == true then
      love.graphics.setColor(0,255,0,255)
      love.graphics.setLineWidth(3)
-     if mst_done == true then
+     if options.mst_done == true then
        for i,edge in ipairs(path_edges) do
         love.graphics.line(edge.p1.x,edge.p1.y,edge.p2.x,edge.p2.y)
        end
@@ -682,7 +654,7 @@ drawing[6] = function()
   
   love.graphics.setColor(0,255,0,255)
   love.graphics.setLineWidth(5)
-  if norm_done == true then
+  if options.norm_done == true then
     for i,edge in ipairs(edges_final) do
       if edge.isL == true then
         love.graphics.line(edge.p1.x,edge.p1.y,edge.p3.x,edge.p3.y,edge.p2.x,edge.p2.y)
@@ -722,7 +694,7 @@ drawing[7]= function()
   love.graphics.setColor(0,255,0,255)
   love.graphics.setLineWidth(3)
   
-   if norm_done == true then
+   if options.norm_done == true then
     for i,edge in ipairs(edges_final) do
       if edge.isL == true then
         love.graphics.line(edge.p1.x,edge.p1.y,edge.p3.x,edge.p3.y,edge.p2.x,edge.p2.y)
@@ -794,26 +766,19 @@ end
 
 
 function DungeonCreator.newDungeon()
-  
-  -- require("mobdebug").start()
-  
-  --love.math.setRandomSeed(1)
- -- math.randomseed(1)
   math.randomseed(os.time())
-  --steps[1]=random_rects()
   love.physics.setMeter(1)
   world = love.physics.newWorld(0,0,true)
-  --initialise the world before starting
 end
 
 
 function DungeonCreator.Update(dt)
-    steps[step_idx](dt)
+    steps[options.step_idx](dt)
   
 end
 
  
  function DungeonCreator.Draw()
-    drawing[step_idx]()
+    drawing[options.step_idx]()
   
 end

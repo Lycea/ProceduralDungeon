@@ -1,9 +1,5 @@
-
-  require "dungeon"
+require "dungeon"
   
-
-
-
 
 function love.load()
   DungeonCreator.newDungeon()
