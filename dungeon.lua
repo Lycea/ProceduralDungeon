@@ -30,7 +30,7 @@ local triangles
 local c_hi         -- TODO: change that value to something usefull or remove it !
 
 
-local named_options ={ "max_width","max_height","mean_thresh","max_rooms","useSeed","seed"}
+local named_options ={ "max_width","max_height","mean_thresh","max_rooms","useSeed","seed","height_circle","width_circle","percent_paths_added_back"}
 
 
 local options_default = 
@@ -48,6 +48,7 @@ local options_default =
     max = 10000,           
     true_c = 0,
     wait = 0,
+    no_draw = false,
     
     --changeable settings
     max_width  = 20,              --max room width
@@ -57,7 +58,13 @@ local options_default =
     
     --seed options
     useSeed   = false,
-    seed      = 0
+    seed      = 0,
+    
+    --generation
+    width_circle  =  400 ,  --these both say if a dungeon will be longer or higher 
+    height_circle =  200,
+    
+    percent_paths_added_back = 15,   --percentage of lines addedd back after the perfect way
   }
 
 local options = options_default 
@@ -87,6 +94,8 @@ local function getRandomPointInEllipse(ellipse_width, ellipse_height)
   local u = math.random()+math.random()
   local r = nil
   if u > 1 then r = 2-u else r = u end
+  
+  --the additional number is that it doesn't go out of the view ... only important for preview
   return ellipse_width*r*math.cos(t)/2+350,
          ellipse_height*r*math.sin(t)/2+400
 end
@@ -328,8 +337,8 @@ steps[1] = function()
 
     
     rooms[#rooms].width = rooms[#rooms].width  +5
-     rooms[#rooms].height  = rooms[#rooms].height  +5
-    rooms[#rooms].x,rooms[#rooms].y = getRandomPointInEllipse(400,200)
+    rooms[#rooms].height  = rooms[#rooms].height  +5
+    rooms[#rooms].x,rooms[#rooms].y = getRandomPointInEllipse(options.width_circle,options.height_circle)
     rooms[#rooms].id = #rooms
 end
 
@@ -349,9 +358,14 @@ steps[2] = function(dt)
       success , temp_obj[#temp_obj].fixture =pcall( love.physics.newFixture,temp_obj[#temp_obj].body,temp_obj[#temp_obj].shape,1)
       if success == true then
         --go on nothing to see here
+                
       else
       -- point out what is wrong and fix it then do it again  
-        print("hiiii")
+        print("Something went wrong with the fixture")
+        print("for debuging please make an issue with the seeds\n then it is reproducable\n")
+        print("love seed: "..love.math.getRandomSeed())
+        print("lua  seed: ")
+        print("also copy the settings send them,if changed!")
       end
       
     end
@@ -364,17 +378,19 @@ end
 
 steps[3] = function(dt)
   local x,y
-  --copy data  and select the main rooms
+  --copy data  and select the main rooms in one step
   if options.data_copied == false then
     for i in ipairs(temp_obj)do
       x,y = temp_obj[i].body:getWorldPoints(temp_obj[i].shape:getPoints())
-      print(roundm(x,2).." "..roundm(y,2))
+      --print(roundm(x,2).." "..roundm(y,2))
       rooms[i].x = roundm(x,2)
       rooms[i].y = roundm(y,2)
       
+      --check if rooms are main rooms
       if rooms[i].width > options.max_width*options.mean_thresh and rooms[i].height> options.max_height*options.mean_thresh then
         rooms[i].isMain = true
         
+        --get the center points
         rooms[i].CenterX = (rooms[i].x+rooms[i].width+rooms[i].x)/2 
         rooms[i].CenterY = (rooms[i].y+rooms[i].height+rooms[i].y)/2 
         
@@ -395,13 +411,17 @@ end
 
 steps[4] = function ()
   if options.triang_done == false then
+    --add all the points of the main rooms to the list
     for i in ipairs( main_rooms) do
       temp_tab[#temp_tab+1]= Point(main_rooms[i].CenterX,main_rooms[i].CenterY)
     end
-      triangles = Delaunay.triangulate(unpack(temp_tab))
-      for i, triangle in ipairs(triangles) do
-        print(triangle)
-        end
+    --do the triangulation stuff ...
+    triangles = Delaunay.triangulate(unpack(temp_tab))
+    
+    --print the triangles (?)
+  --  for i, triangle in ipairs(triangles) do
+    --  print(triangle)
+    --end
      options.triang_done = true
   end  
 end
@@ -409,10 +429,11 @@ end
 steps[5] = function ()
   
   if options.mst_done == true  then
-    return
+    return 
   end
   
-  
+  --first sort all of the edges biggest to smallest 
+  --TODO: Add other way around ? :P
    for i, triangle in ipairs(triangles) do
      local temp_ = {}
      local not_inp = true
@@ -420,51 +441,48 @@ steps[5] = function ()
      local num = 0
      local weight = 0
      
-     
       temp_[1], temp_[2] ,temp_[3] = triangle.e1,triangle.e2,triangle.e3
-         --  love.graphics.polygon("line",triangle.p1.x,triangle.p1.y,triangle.p2.x,triangle.p2.y,triangle.p3.x,triangle.p3.y)
-           for i=1,3 do
-             if #path_edges == 0 then
-                table.insert(path_edges,1,temp_[i])
-             else
-               while not_inp and edge_idx <= #path_edges do
-                 --print(path_edges[edge_idx]:length())
-                 if temp_[i]:length()<path_edges[edge_idx]:length() then
- 
-                   table.insert(path_edges,edge_idx,temp_[i])
-                   print("Insert length ".. temp_[i]:length().." at pos "..edge_idx)
-                   not_inp = false
-                   break
-                 end 
-                 edge_idx = edge_idx + 1
-               end
-               if not_inp == true then
-                 --input on last place
-                 table.insert(path_edges,#path_edges+1,temp_[i])
-                 print("Insert length ".. temp_[i]:length().."  after fail at pos "..#path_edges)
-               end
-               
-               edge_idx = 1
-               not_inp = true
-             end
+       for i=1,3 do
+         if #path_edges == 0 then
+            table.insert(path_edges,1,temp_[i])
+         else
+           while not_inp and edge_idx <= #path_edges do
+             if temp_[i]:length()<path_edges[edge_idx]:length() then
+
+               table.insert(path_edges,edge_idx,temp_[i])
+               --print("Insert length ".. temp_[i]:length().." at pos "..edge_idx)
+               not_inp = false
+               break
+             end 
+             edge_idx = edge_idx + 1
            end
+           if not_inp == true then
+             --input on last place
+             --TODO: maybe addd the posibility to change where to add -> only small ways /long ways / missing islands ?
+             table.insert(path_edges,#path_edges+1,temp_[i])
+           end
+           
+           edge_idx = 1
+           not_inp = true
+         end
+       end
    end  
    
-   --print("möp")
+
    
    --start minimum spanning tree algorithmus
     local temp,weight,num = mst()
     
-    print(weight.."  "..num)
+    --print(weight.."  "..num)
     
     --add additional lines back
-    local add_back =math.floor((#path_edges)/100*15) -- <-number to add back
+    local add_back =math.floor((#path_edges)/100*options.percent_paths_added_back) -- <-number to add back
     --print(weight.."  "..num.." "..add_back)
     num = 0
     local idx = #path_edges
     
     
-    while num < add_back do
+    while (num < add_back) and (idx > 0) do
       if path_edges[idx].added == true then
         idx = idx -1
       else
