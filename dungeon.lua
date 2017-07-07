@@ -1,10 +1,18 @@
-
 DungeonCreator = {}
 
--- needed for triangulation !
-local Delaunay = require "src.delaunay"
+local BASE = (...)..'.' 
+local i= BASE:find("dungeon")
+BASE=BASE:sub(1,i-1)
+
+Delaunay = require(BASE .. 'src.delaunay')
+
+
+
 local Point    = Delaunay.Point
 local Edge     = Delaunay.Edge
+-- needed for triangulation !
+--local Delaunay = require "src.delaunay"
+
 
 
 -----------------------------------------------------------------------
