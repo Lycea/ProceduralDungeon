@@ -57,6 +57,9 @@ local options_default =
     true_c = 0,
     wait = 0,
     no_draw = false,
+    draw_counter = 0,
+    
+    status = "unknown",
     
     --changeable settings
     max_width  = 20,              --max room width
@@ -328,6 +331,7 @@ end
  
   
 steps[1] = function() 
+  options.status = "generating rooms..."
     if #rooms > options.max_rooms then
       options.step_idx = options.step_idx+1
       return
@@ -354,6 +358,7 @@ steps[2] = function(dt)
   local success
   
   if options.created_obj == false then
+    options.status = "moving rooms away from each other..."
     -- create all the objects
     world:setCallbacks(notFinished,notFinished2,notFinished3,finished)
     for j in ipairs(rooms) do
@@ -386,6 +391,7 @@ end
 
 steps[3] = function(dt)
   local x,y
+  options.status = "selecting main rooms..."
   --copy data  and select the main rooms in one step
   if options.data_copied == false then
     for i in ipairs(temp_obj)do
@@ -418,6 +424,7 @@ end
 
 
 steps[4] = function ()
+  options.status = "calculating all ways..."
   if options.triang_done == false then
     --add all the points of the main rooms to the list
     for i in ipairs( main_rooms) do
@@ -435,7 +442,7 @@ steps[4] = function ()
 end
 
 steps[5] = function ()
-  
+  options.status = "clear out unwanted ways..."
   if options.mst_done == true  then
     return 
   end
@@ -477,7 +484,7 @@ steps[5] = function ()
    end  
    
 
-   
+   options.status = "add ways back..."
    --start minimum spanning tree algorithmus
     local temp,weight,num = mst()
     
@@ -527,7 +534,7 @@ steps[6] = function ()
   end
   
   
-  
+ options.status = "normalise the ways..." 
   for i, edge in ipairs(path_edges) do
     local mid_x,mid_y
     mid_x = (edge.p1.x + edge.p2.x)/2
@@ -601,6 +608,8 @@ steps[7] = function ()
   options.true_c = 0
   rooms_n = 0
   rooms_n = {}
+  options.status = "add back more rooms!..." 
+  
     for i, edge in ipairs (edges_final)do
       for j, room in ipairs (rooms)do
           if room.isMain == true or room.isHall == true then
@@ -610,7 +619,9 @@ steps[7] = function ()
           end
       end
     end
-  
+    options.status = "finished" 
+    
+  options.step_idx = 8
 end
 
 
@@ -826,7 +837,6 @@ end
 function DungeonCreator.newDungeon()
   if options.useSeed == false then
     math.randomseed(os.time())
-
   else
     math.randomseed(options.seed)
     love.math.setRandomSeed(options.seed)
@@ -839,12 +849,28 @@ end
 
 --needed for updating the dungeon
 function DungeonCreator.Update(dt)
+  if options.step_idx < 8 then
     steps[options.step_idx](dt)
-  
+  end
 end
 
  --needed for drawing the dungeon
  function DungeonCreator.Draw()
+   print(options.step_idx)
+   if options.step_idx < 8 then
     drawing[options.step_idx]()
-  
+  end
+end
+
+
+
+function DungeonCreator.GetDungeon()
+  if options.status  == "finished" then
+    --return all needed dungeon parts to continue!!!
+  end
+end
+
+
+function DungeonCreator.GetState()
+  return options.status
 end
