@@ -6,12 +6,8 @@ BASE=BASE:sub(1,i-1)
 
 Delaunay = require(BASE .. 'src.delaunay')
 
-
-
 local Point    = Delaunay.Point
 local Edge     = Delaunay.Edge
--- needed for triangulation !
---local Delaunay = require "src.delaunay"
 
 
 
@@ -58,6 +54,7 @@ local options_default =
     wait = 0,
     no_draw = false,
     draw_counter = 0,
+    update_counter = 0,
     
     status = "unknown",
     
@@ -83,10 +80,6 @@ local options = options_default
 -----------------------------------------------------------------------------
 -- Start helper functions
 -----------------------------------------------------------------------------
-
-
-
-
 local function roundm(n, m)
   return math.floor(((n + m - 1)/m))*m
 end
@@ -112,7 +105,9 @@ local function getRandomPointInEllipse(ellipse_width, ellipse_height)
 end
   
   
- function math.sign(n) return n>0 and 1 or n<0 and -1 or 0 end
+local function sign(n)
+  return n>0 and 1 or n<0 and -1 or 0 
+end
 
 local function root(x)
   
@@ -136,7 +131,7 @@ end
 
 
 local function checkIntersect(l1p1, l1p2, l2p1, l2p2)
-	local function checkDir(pt1, pt2, pt3) return math.sign(((pt2.x-pt1.x)*(pt3.y-pt1.y)) - ((pt3.x-pt1.x)*(pt2.y-pt1.y))) end
+	local function checkDir(pt1, pt2, pt3) return sign(((pt2.x-pt1.x)*(pt3.y-pt1.y)) - ((pt3.x-pt1.x)*(pt2.y-pt1.y))) end
 	return (checkDir(l1p1,l1p2,l2p1) ~= checkDir(l1p1,l1p2,l2p2)) and (checkDir(l2p1,l2p2,l1p1) ~= checkDir(l2p1,l2p2,l1p2))
 end
   
@@ -147,7 +142,7 @@ local function CheckCollision(room,line)
   local a = 0
   local c = 0
   local d = 0
-  love.graphics.clear()
+  --love.graphics.clear()
   if line.isL == false then
      a = checkIntersect({x=room.x,y=room.y}, {x=room.x+room.width,y=room.y},               {x = line.p1.x,y=line.p1.y},{x=line.p2.x,y=line.p2.y})
      b = checkIntersect({x=room.x,y=room.y}, {x=room.x,y=room.y+room.height},              {x=line.p1.x,y=line.p1.y},{x=line.p2.x,y=line.p2.y})
@@ -174,10 +169,10 @@ local function CheckCollision(room,line)
     --a = sum + a
   end
   
-  love.graphics.line(room.x,room.y, room.x+room.width,room.y)
-  love.graphics.line(room.x,room.y, room.x,room.y+room.height)
-  love.graphics.line(room.x+room.width,room.y, room.x+room.width,room.y+ room.height)
-  love.graphics.line(room.x+room.width,room.y+room.height, room.x,room.y +room.height)
+  --love.graphics.line(room.x,room.y, room.x+room.width,room.y)
+  --love.graphics.line(room.x,room.y, room.x,room.y+room.height)
+  --love.graphics.line(room.x+room.width,room.y, room.x+room.width,room.y+ room.height)
+  --love.graphics.line(room.x+room.width,room.y+room.height, room.x,room.y +room.height)
   
   if not a and not b and not c and not d and not sum then
     --print (a.." "..b.." "..c.." "..d.." "..sum)
@@ -187,14 +182,14 @@ local function CheckCollision(room,line)
     options.true_c = options.true_c + 1
     rooms_n[#rooms_n+1] =room
      -- love.graphics.clear()
-        love.graphics.setColor(0,100,200,255)
-        love.graphics.rectangle("fill",room.x,room.y,room.width,room.height)
-        love.graphics.setColor(0,255,0,255)
+        --love.graphics.setColor(0,100,200,255)
+       -- love.graphics.rectangle("fill",room.x,room.y,room.width,room.height)
+       -- love.graphics.setColor(0,255,0,255)
         if line.isL == true then
-          love.graphics.line(line.p1.x,line.p1.y,line.p3.x,line.p3.y)
-          love.graphics.line(line.p2.x,line.p2.y,line.p3.x,line.p3.y)
+         -- love.graphics.line(line.p1.x,line.p1.y,line.p3.x,line.p3.y)
+         -- love.graphics.line(line.p2.x,line.p2.y,line.p3.x,line.p3.y)
         else
-          love.graphics.line(line.p1.x,line.p1.y,line.p2.x,line.p2.y)
+         -- love.graphics.line(line.p1.x,line.p1.y,line.p2.x,line.p2.y)
         end
         
       --love.graphics.present()
@@ -230,9 +225,9 @@ function mst ()
         count = count +1
         
         for i,edge in ipairs(temp_edge) do
-            love.graphics.line(edge.p1.x,edge.p1.y,edge.p2.x,edge.p2.y)
+           -- love.graphics.line(edge.p1.x,edge.p1.y,edge.p2.x,edge.p2.y)
         end
-        love.graphics.present()
+       -- love.graphics.present()
         union1(x,y)
         
         --love.timer.sleep(1)
@@ -247,19 +242,8 @@ end
   ---------------------------------------------------------------------------
   -- World callback functions , needed temporary for moving rectangles
   ---------------------------------------------------------------------------
-local function notFinished()
-    c_hi = 0
-  end
-  
-local function notFinished2()
-    c_hi = 0
-  end
-  
-local function notFinished3()
-    c_hi = 0
-  end
 local function finished(a,b,coll,n,t)
-    options.txt=" "
+   -- options.txt=" "
     options.count = 0
 end
     
@@ -271,6 +255,20 @@ end
   ------------------------------------------------------
   --start of main functions for drawing and calculating
   ------------------------------------------------------
+  function check_contacts()
+    options.txt = world:getContactCount()
+    if options.txt == options.old then
+      options.count= options.count+1
+    else
+      options.count = 0
+      options.old = options.txt
+    end
+    
+    if options.count > 50 then
+      --txt = "test\n"
+      options.step_idx = options.step_idx +1
+    end
+  end
   
   
 drawing[1] = function()
@@ -296,18 +294,7 @@ drawing[2] = function()
      love.graphics.polygon("line",temp_obj[i].body:getWorldPoints(temp_obj[i].shape:getPoints()))
    end
     
-    options.txt = world:getContactCount()
-    if options.txt == options.old then
-      options.count= options.count+1
-    else
-      options.count = 0
-      options.old = options.txt
-    end
-    
-    if options.count > 50 then
-      --txt = "test\n"
-      options.step_idx = options.step_idx +1
-    end
+    check_contacts()
     love.graphics.print(options.txt.." "..options.count,0,0)
 end
 
@@ -331,9 +318,15 @@ end
  
   
 steps[1] = function() 
+
+  
   options.status = "generating rooms..."
     if #rooms > options.max_rooms then
       options.step_idx = options.step_idx+1
+      
+      if options.update_counter > options.draw_counter then
+        options.no_draw = true
+      end
       return
     end
     rooms[#rooms+1]       ={}
@@ -385,7 +378,10 @@ steps[2] = function(dt)
     options.created_obj = true
   else
     --only update till there is no collision anymore
-    world:update(dt)
+    world:update(200)
+    if options.no_draw == true then
+      check_contacts()
+    end
   end
 end
 
@@ -415,7 +411,7 @@ steps[3] = function(dt)
     options.data_copied = true
   else
     options.wait =options.wait + dt
-    if options.wait >2 then
+    if options.wait >2 or  options.no_draw == true then
       options.step_idx = options.step_idx+1
     end
   end
@@ -438,6 +434,11 @@ steps[4] = function ()
     --  print(triangle)
     --end
      options.triang_done = true
+     
+     if options.no_draw == true then
+       options.step_idx = options.step_idx +1  
+     end
+     
   end  
 end
 
@@ -834,6 +835,8 @@ function DungeonCreator.setOptions(newOptions)
   print(options_changed.." settings were actualised!")
 end
 
+
+--TODO: need to reinitialise the dungeon's processing data!!
 function DungeonCreator.newDungeon()
   if options.useSeed == false then
     math.randomseed(os.time())
@@ -852,11 +855,13 @@ function DungeonCreator.Update(dt)
   if options.step_idx < 8 then
     steps[options.step_idx](dt)
   end
+  options.update_counter =  options.update_counter +1
 end
 
  --needed for drawing the dungeon
  function DungeonCreator.Draw()
-   print(options.step_idx)
+   options.draw_counter = options.draw_counter +1
+   --print(options.step_idx)
    if options.step_idx < 8 then
     drawing[options.step_idx]()
   end
@@ -867,6 +872,7 @@ end
 function DungeonCreator.GetDungeon()
   if options.status  == "finished" then
     --return all needed dungeon parts to continue!!!
+    return edges_final ,rooms,rooms_n
   end
 end
 
