@@ -616,7 +616,7 @@ steps[7] = function ()
           if room.isMain == true or room.isHall == true then
            
           else
-            rooms[i].isHall = CheckCollision(room,edge)
+            rooms[j].isHall = CheckCollision(room,edge)
           end
       end
     end
