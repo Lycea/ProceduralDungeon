@@ -9,6 +9,7 @@ Delaunay = require(BASE .. 'src.delaunay')
 local Point    = Delaunay.Point
 local Edge     = Delaunay.Edge
 
+local reset = false
 
 
 -----------------------------------------------------------------------
@@ -100,8 +101,8 @@ local function getRandomPointInEllipse(ellipse_width, ellipse_height)
   if u > 1 then r = 2-u else r = u end
   
   --the additional number is that it doesn't go out of the view ... only important for preview
-  return ellipse_width*r*math.cos(t)/2+350,
-         ellipse_height*r*math.sin(t)/2+400
+  return roundm(ellipse_width*r*math.cos(t)/2+350,2),
+         roundm(ellipse_height*r*math.sin(t)/2+400,2)
 end
   
   
@@ -330,8 +331,8 @@ steps[1] = function()
       return
     end
     rooms[#rooms+1]       ={}
-    rooms[#rooms].height  =love.math.randomNormal(10,options.max_height)
-    rooms[#rooms].width   =love.math.randomNormal(10,options.max_width)
+    rooms[#rooms].height  =roundm(love.math.randomNormal(10,options.max_height),2)
+    rooms[#rooms].width   =roundm(love.math.randomNormal(10,options.max_width),2)
     if  rooms[#rooms].width < 0 then
       rooms[#rooms].width = 0
     end
@@ -401,8 +402,8 @@ steps[3] = function(dt)
         rooms[i].isMain = true
         
         --get the center points
-        rooms[i].CenterX = (rooms[i].x+rooms[i].width+rooms[i].x)/2 
-        rooms[i].CenterY = (rooms[i].y+rooms[i].height+rooms[i].y)/2 
+        rooms[i].CenterX = math.floor((rooms[i].x+rooms[i].width+rooms[i].x)/2 )
+        rooms[i].CenterY = math.floor((rooms[i].y+rooms[i].height+rooms[i].y)/2 )
         
         main_rooms[#main_rooms+1] = rooms[i]
         end
@@ -824,6 +825,11 @@ end
 ---------------------------------------------
 -- Functions accessable from outside
 ---------------------------------------------
+local function reset_dungeon()
+   print(arg[1])
+end
+
+
 function DungeonCreator.setOptions(newOptions)
   local options_changed = 0
   for i,name in ipairs(named_options) do
@@ -838,8 +844,20 @@ end
 
 --TODO: need to reinitialise the dungeon's processing data!!
 function DungeonCreator.newDungeon()
+  if reset == false then
+    reset_dungeon()
+    reset = true
+  end
+  
   if options.useSeed == false then
-    math.randomseed(os.time())
+    local seed = os.time()
+    love.math.setRandomSeed(seed)
+    math.randomseed(seed)
+    local path = arg[1].."\\".."seeds.txt"
+    local fi = io.open(path,"a")
+    fi:write(seed)
+    fi:write("\n")
+    io.close(fi)
   else
     math.randomseed(options.seed)
     love.math.setRandomSeed(options.seed)
@@ -847,6 +865,8 @@ function DungeonCreator.newDungeon()
   --init physics stuff
   love.physics.setMeter(1)
   world = love.physics.newWorld(0,0,true)
+  
+  reset = false
 end
 
 
@@ -872,9 +892,12 @@ end
 function DungeonCreator.GetDungeon()
   if options.status  == "finished" then
     --return all needed dungeon parts to continue!!!
-    return edges_final ,rooms,rooms_n
+    return edges_final ,rooms,rooms_n,main_rooms
   end
 end
+
+
+
 
 
 function DungeonCreator.GetState()
