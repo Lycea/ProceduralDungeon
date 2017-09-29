@@ -348,6 +348,8 @@ steps[1] = function()
     rooms[#rooms].id = #rooms
 end
 
+local wall_left  = {} -- horizontal
+local wall_right = {} -- vertical
 steps[2] = function(dt)
   local success
   
@@ -355,6 +357,26 @@ steps[2] = function(dt)
     options.status = "moving rooms away from each other..."
     -- create all the objects
     world:setCallbacks(notFinished,notFinished2,notFinished3,finished)
+    
+    
+    -- create 2 Borders for the room that it doesn't go negative ~
+  
+  
+      wall_left.body = love.physics.newBody(world,0,0,"static")
+      wall_left.body:setFixedRotation(true)
+      wall_left.body:setSleepingAllowed(true)
+      wall_left.body:setAwake(true)
+      wall_left.shape   = love.physics.newRectangleShape(1000,3)
+      success , wall_left.fixture =pcall( love.physics.newFixture,wall_left.body,wall_left.shape,1)
+      
+      wall_right.body = love.physics.newBody(world,0,4,"static")
+      wall_right.body:setFixedRotation(true)
+      wall_right.body:setSleepingAllowed(true)
+      wall_right.body:setAwake(true)
+      wall_right.shape   = love.physics.newRectangleShape(3,1000)
+      success , wall_right.fixture =pcall( love.physics.newFixture,wall_right.body,wall_right.shape,1)
+  
+  
     for j in ipairs(rooms) do
       temp_obj[#temp_obj+1] = {}
       temp_obj[#temp_obj].body = love.physics.newBody(world,rooms[j].x,rooms[j].y,"dynamic")
