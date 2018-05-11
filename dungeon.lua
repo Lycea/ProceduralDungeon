@@ -9,7 +9,7 @@ Delaunay = require(BASE .. 'src.delaunay')
 local Point    = Delaunay.Point
 local Edge     = Delaunay.Edge
 
-local reset = false
+local reset = true
 
 
 -----------------------------------------------------------------------
@@ -32,7 +32,7 @@ local rooms_n = {}
 
 local world
 local triangles
-local c_hi         -- TODO: change that value to something usefull or remove it !
+
 
 
 local named_options ={ "max_width","max_height","mean_thresh","max_rooms","useSeed","seed","height_circle","width_circle","percent_paths_added_back"}
@@ -848,7 +848,47 @@ end
 -- Functions accessable from outside
 ---------------------------------------------
 local function reset_dungeon()
-   print(arg[1])
+    print(arg[1])
+    wall_left  = {}
+    wall_right = {}
+   
+    --reset the internal options
+    options.triang_done = false
+    options.created_obj = false
+    options.data_copied = false
+    options.mst_done    = false
+    options.norm_done = false
+    options.step_idx = 1
+    options.txt =" "
+    options.count = 0
+    options.old = 0
+    options.max = 10000           
+    options.true_c = 0
+    options.wait = 0
+    options.no_draw = false
+    options.draw_counter = 0
+    options.update_counter = 0
+
+    options.status = "unknown"
+    
+    
+    --reset all used tables
+    rooms     = {}
+    temp_tab  = {}
+    temp_obj  = {}
+    main_rooms = {}
+
+    path_edges  = {}
+    edges_pre   = {}
+    edges_final = {}
+    id ={}
+    rooms_n = {}
+
+
+    world = nil
+    triangles = nil
+    
+    print("resetted successfull")
 end
 
 
